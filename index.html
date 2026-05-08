@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RESULT PORTAL — CLASSIFIED</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#06060e;
+  --accent:#00ff88;
+  --accent2:#00ccff;
+  --danger:#ff3355;
+  --dim:#0d0d18;
+  --border:#00ff8820;
+  --text:#c8c8d8;
+}
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
+
+html,body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Share Tech Mono',monospace;
+  min-height:100vh;
+  overflow-x:hidden;
+  user-select:none;
+}
+
+/* scanline overlay */
+body::before{
+  content:'';
+  position:fixed;inset:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.08) 2px,rgba(0,0,0,0.08) 4px);
+  pointer-events:none;z-index:9998;
+}
+
+/* ── LOADING ── */
+#loading{
+  position:fixed;inset:0;background:var(--bg);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  z-index:9990;transition:opacity 0.6s;
+}
+.load-lock{font-size:3.5rem;animation:lockSpin 3s ease-in-out infinite;}
+@keyframes lockSpin{0%,100%{transform:rotate(0) scale(1);}50%{transform:rotate(-10deg) scale(1.1);}}
+.load-bar-wrap{width:260px;height:3px;background:#111;border-radius:2px;margin:28px 0 16px;overflow:hidden;}
+.load-bar{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));width:0%;border-radius:2px;animation:loadProgress 2.6s ease forwards;}
+@keyframes loadProgress{0%{width:0%}60%{width:75%}100%{width:100%}}
+.load-txt{color:var(--accent);font-size:.75rem;letter-spacing:4px;animation:blink .7s infinite;}
+.load-ver{color:#333;font-size:.65rem;letter-spacing:2px;margin-top:12px;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
+/* ── MAIN ── */
+#main{
+  display:none;flex-direction:column;align-items:center;
+  justify-content:flex-start;min-height:100vh;
+  padding:30px 16px 60px;
+}
+
+.portal-header{text-align:center;margin-bottom:28px;}
+.portal-title{
+  font-family:'Orbitron',monospace;font-size:1.5rem;font-weight:900;
+  color:var(--accent);letter-spacing:6px;
+  text-shadow:0 0 20px #00ff8866,0 0 40px #00ff8833;
+  margin-bottom:6px;
+}
+.portal-sub{color:#333;font-size:.65rem;letter-spacing:4px;}
+
+/* global progress */
+.global-prog-wrap{width:100%;max-width:600px;margin-bottom:24px;}
+.global-prog-label{display:flex;justify-content:space-between;font-size:.65rem;color:#444;margin-bottom:6px;}
+.global-prog-bar{height:2px;background:#111;border-radius:2px;}
+.global-prog-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:2px;transition:width .7s ease;width:0%;}
+
+/* lock icon */
+#lockIcon{
+  font-size:3rem;margin-bottom:24px;cursor:default;
+  transition:transform .15s,filter .3s;
+  filter:drop-shadow(0 0 6px #00ff8833);
+}
+#lockIcon.pulsing{
+  cursor:pointer;
+  animation:lockPulse 1.8s ease-in-out infinite;
+}
+@keyframes lockPulse{
+  0%,100%{filter:drop-shadow(0 0 8px #00ff8844);transform:scale(1);}
+  50%{filter:drop-shadow(0 0 30px #00ff88bb);transform:scale(1.08);}
+}
+
+/* ── PUZZLE BOX ── */
+#puzzleBox{
+  width:100%;max-width:600px;
+  background:var(--dim);
+  border:1px solid var(--border);
+  border-radius:16px;padding:28px;
+  box-shadow:0 0 40px #00ff8808,inset 0 1px 0 #00ff8815;
+}
+.pz-header{display:flex;justify-content:space-between;font-size:.68rem;color:#444;margin-bottom:8px;letter-spacing:2px;}
+.pz-num{color:var(--accent);}
+.pz-inner-prog{height:2px;background:#111;border-radius:2px;margin-bottom:20px;}
+.pz-inner-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .5s ease;width:0%;}
+.pz-title{font-family:'Orbitron',monospace;font-size:.85rem;color:var(--accent);letter-spacing:3px;margin-bottom:10px;}
+.pz-clue{
+  color:#777;font-size:.8rem;line-height:1.8;margin-bottom:14px;
+  font-style:italic;border-left:2px solid #00ff8830;padding-left:12px;
+  white-space:pre-wrap;
+}
+.pz-content{
+  background:#080812;border:1px solid #1a1a28;border-radius:10px;
+  padding:18px;margin-bottom:18px;
+  font-size:.88rem;line-height:2;color:#ddd;
+  white-space:pre-wrap;word-break:break-word;
+  transition:border-color .3s;
+}
+.pz-content.correct{border-color:var(--accent);}
+.pz-row{display:flex;gap:10px;}
+.pz-input{
+  flex:1;background:#080812;border:1px solid #222;border-radius:8px;
+  padding:11px 14px;color:#fff;font-family:'Share Tech Mono',monospace;
+  font-size:.9rem;outline:none;transition:border-color .3s,box-shadow .3s;
+  letter-spacing:1px;
+}
+.pz-input:focus{border-color:var(--accent);box-shadow:0 0 12px #00ff8822;}
+.pz-btn{
+  background:transparent;border:1px solid var(--accent);color:var(--accent);
+  padding:11px 18px;border-radius:8px;cursor:pointer;
+  font-family:'Share Tech Mono',monospace;font-size:.8rem;letter-spacing:2px;
+  transition:background .2s,box-shadow .2s;white-space:nowrap;
+}
+.pz-btn:hover{background:#00ff8815;box-shadow:0 0 15px #00ff8830;}
+.err{color:var(--danger);font-size:.73rem;margin-top:9px;display:none;letter-spacing:1px;}
+
+.shake{animation:shake .35s;}
+@keyframes shake{
+  0%,100%{transform:translateX(0)}
+  20%{transform:translateX(-7px)}40%{transform:translateX(7px)}
+  60%{transform:translateX(-4px)}80%{transform:translateX(4px)}
+}
+
+/* RGB puzzle */
+.rgb-row{display:flex;gap:14px;justify-content:center;margin:8px 0 12px;}
+.rgb-box{
+  width:70px;height:70px;border-radius:10px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-size:.6rem;color:rgba(255,255,255,.6);line-height:1.6;
+  border:1px solid rgba(255,255,255,.15);
+}
+
+/* shadow text */
+.shadow-zone{
+  display:inline-block;
+  color:#06060e;background:#06060e;
+  padding:10px 16px;border-radius:6px;
+  font-size:1.1rem;letter-spacing:4px;
+  user-select:text!important;cursor:text;
+  border:1px dashed #1a1a1a;
+}
+
+/* ── COMPLETION ── */
+#completion{
+  display:none;flex-direction:column;
+  align-items:center;text-align:center;
+  max-width:580px;padding:10px 20px;
+}
+.verified{
+  font-family:'Orbitron',monospace;font-size:1.1rem;
+  color:var(--accent);letter-spacing:4px;margin:14px 0;
+  text-shadow:0 0 20px #00ff8866;
+}
+.crypt-msg{
+  color:#666;font-size:.85rem;line-height:2.2;font-style:italic;
+  white-space:pre-wrap;min-height:80px;
+}
+.clue2{
+  display:none;color:#444;font-size:.78rem;margin-top:18px;
+  font-style:italic;border-top:1px solid #1a1a1a;padding-top:16px;
+}
+
+/* ── HIDDEN PAGE ── */
+#hiddenPage{
+  display:none;position:fixed;inset:0;background:var(--bg);
+  flex-direction:column;align-items:center;justify-content:center;
+  z-index:500;
+}
+.hp-glow{
+  position:absolute;inset:0;
+  background:radial-gradient(ellipse at center,#00ff8808 0%,transparent 70%);
+  pointer-events:none;
+}
+@keyframes slideUp{from{transform:translateY(50px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+.hp-title{
+  font-family:'Orbitron',monospace;color:var(--accent);
+  font-size:1.4rem;letter-spacing:5px;margin-bottom:8px;
+  animation:slideUp .6s ease both;text-shadow:0 0 30px #00ff8888;
+}
+.hp-sub{color:#444;font-size:.72rem;letter-spacing:3px;margin-bottom:50px;animation:slideUp .6s .1s ease both;}
+.hp-corners{
+  position:relative;border:1px solid #00ff8833;border-radius:12px;
+  padding:28px 44px;animation:slideUp .6s .2s ease both;
+}
+.hp-corners::before,.hp-corners::after{
+  content:'';position:absolute;width:12px;height:12px;border-color:var(--accent);border-style:solid;
+}
+.hp-corners::before{top:-1px;left:-1px;border-width:2px 0 0 2px;border-radius:4px 0 0 0;}
+.hp-corners::after{bottom:-1px;right:-1px;border-width:0 2px 2px 0;border-radius:0 0 4px 0;}
+.decrypt-btn{
+  background:transparent;border:1px solid var(--accent);color:var(--accent);
+  padding:14px 38px;border-radius:8px;cursor:pointer;
+  font-family:'Orbitron',monospace;font-size:.85rem;letter-spacing:4px;
+  transition:all .3s;
+}
+.decrypt-btn:hover{background:#00ff8818;box-shadow:0 0 30px #00ff8855,inset 0 0 20px #00ff8808;}
+
+/* ── OVERLAYS ── */
+.overlay{
+  display:none;position:fixed;inset:0;background:var(--bg);
+  flex-direction:column;align-items:center;justify-content:center;
+  z-index:600;text-align:center;padding:30px;
+}
+.decrypting-label{color:var(--accent);font-size:.7rem;letter-spacing:5px;margin-bottom:24px;animation:blink .5s infinite;}
+.glitch-reveal{
+  font-family:'Orbitron',monospace;font-size:2.4rem;font-weight:900;
+  color:var(--accent);line-height:1.4;
+  animation:glitch .08s infinite;
+  text-shadow:0 0 30px #00ff8866;
+}
+@keyframes glitch{
+  0%{text-shadow:3px 0 #ff0055,-3px 0 #00ccff,0 0 30px #00ff8866;}
+  25%{text-shadow:-3px 0 #ff0055,3px 0 #00ccff,0 0 30px #00ff8866;}
+  50%{text-shadow:3px 3px #ff0055,-3px -3px #00ccff,0 0 30px #00ff8866;}
+  75%{text-shadow:0 0 transparent,0 0 30px #00ff8866;}
+}
+.fool-wrap{text-align:center;}
+.fool-line1{
+  font-family:'Orbitron',monospace;font-size:2.8rem;font-weight:900;
+  color:var(--danger);line-height:1.3;
+  animation:foolPop .6s cubic-bezier(.175,.885,.32,1.275) both;
+  text-shadow:0 0 40px #ff335588;
+}
+.fool-emoji{font-size:4rem;display:block;margin-top:10px;animation:foolPop .6s .2s cubic-bezier(.175,.885,.32,1.275) both;}
+@keyframes foolPop{from{transform:scale(0) rotate(-15deg);opacity:0;}to{transform:scale(1) rotate(0);opacity:1;}}
+
+/* error screen */
+.error-score{
+  font-family:'Orbitron',monospace;font-size:1.6rem;font-weight:900;
+  color:var(--danger);letter-spacing:3px;margin-top:16px;
+  animation:errFlicker .15s infinite;
+}
+@keyframes errFlicker{
+  0%,100%{opacity:1;text-shadow:0 0 30px #ff335588,3px 0 #ff0055,-3px 0 #ff8800;}
+  50%{opacity:.85;text-shadow:0 0 10px #ff335544,-3px 0 #ff0055,3px 0 #ff8800;}
+}
+.error-badge{
+  display:inline-block;background:#ff335522;border:1px solid var(--danger);
+  border-radius:6px;padding:6px 16px;font-size:.75rem;letter-spacing:4px;
+  color:var(--danger);margin-top:14px;animation:blink .6s infinite;
+}
+
+/* confetti */
+#confettiCanvas{position:fixed;inset:0;pointer-events:none;z-index:800;}
+
+/* nice try */
+#niceTry{
+  display:none;position:fixed;inset:0;background:var(--bg);
+  flex-direction:column;align-items:center;justify-content:center;
+  z-index:9999;font-family:'Orbitron',monospace;
+}
+</style>
+</head>
+<body>
+
+<!-- NICE TRY -->
+<div id="niceTry">
+  <div style="font-size:4rem">😂</div>
+  <div style="color:var(--danger);font-size:1.8rem;margin-top:20px;letter-spacing:4px;">NICE TRY.</div>
+  <div style="color:#333;font-size:.7rem;margin-top:12px;letter-spacing:2px;">DEVTOOLS DETECTED. ACCESS REVOKED.</div>
+</div>
+
+<!-- LOADING -->
+<div id="loading">
+  <div class="load-lock">🔐</div>
+  <div class="load-bar-wrap"><div class="load-bar"></div></div>
+  <div class="load-txt">INITIALIZING SECURE PORTAL...</div>
+  <div class="load-ver">ENCRYPTED RESULT SYSTEM v2.4.1 — STAND BY</div>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+  <div class="portal-header">
+    <div class="portal-title">🔒 RESULT PORTAL</div>
+    <div class="portal-sub">DHARANI — CLASSIFIED — AUTHORIZED ACCESS ONLY</div>
+  </div>
+
+  <div class="global-prog-wrap">
+    <div class="global-prog-label">
+      <span>DECRYPTION PROGRESS</span>
+      <span id="progLabel">0 / 8 STAGES</span>
+    </div>
+    <div class="global-prog-bar"><div class="global-prog-fill" id="globalFill"></div></div>
+  </div>
+
+  <div id="lockIcon">🔒</div>
+
+  <!-- PUZZLE BOX -->
+  <div id="puzzleBox">
+    <div class="pz-header">
+      <span class="pz-num" id="pzNum">STAGE 1 / 8</span>
+      <span id="pzLabel">DECRYPTION SEQUENCE</span>
+    </div>
+    <div class="pz-inner-prog"><div class="pz-inner-fill" id="innerFill"></div></div>
+    <div class="pz-title" id="pzTitle"></div>
+    <div class="pz-clue" id="pzClue"></div>
+    <div class="pz-content" id="pzContent"></div>
+    <div class="pz-row">
+      <input type="text" class="pz-input" id="pzInput" placeholder="Enter answer..." autocomplete="off" spellcheck="false"/>
+      <button class="pz-btn" id="submitBtn">SUBMIT ▶</button>
+    </div>
+    <div class="err" id="errMsg">⚠ ACCESS DENIED — INCORRECT ANSWER</div>
+  </div>
+
+  <!-- COMPLETION -->
+  <div id="completion">
+    <div style="font-size:2.8rem">✅</div>
+    <div class="verified">◈ ALL STAGES COMPLETE ◈</div>
+    <div class="crypt-msg" id="cryptMsg"></div>
+    <div class="clue2" id="clue2">"Five is the number of fingers on the hand that holds the pen."</div>
+  </div>
+</div>
+
+<!-- HIDDEN PAGE -->
+<div id="hiddenPage">
+  <div class="hp-glow"></div>
+  <div class="hp-title">◈ HIDDEN LAYER ACCESSED ◈</div>
+  <div class="hp-sub">ENTER CRYPTOGRAPHIC KEY TO DECRYPT</div>
+  <div class="hp-corners">
+    <input type="password" id="cryptoKeyInput" class="pz-input"
+      placeholder="Enter key..."
+      autocomplete="off" spellcheck="false"
+      style="margin-bottom:14px;width:100%;text-align:center;letter-spacing:4px;font-size:1rem;"/>
+    <button class="decrypt-btn" id="decryptBtn">⬛ DECRYPT RESULT ⬛</button>
+    <div id="decryptErr" style="color:#ff3355;font-size:.72rem;margin-top:12px;letter-spacing:2px;display:none;text-align:center;">
+      ⚠ DECRYPTION FAILED — INVALID KEY
+    </div>
+  </div>
+</div>
+
+<!-- OVERLAY: DAMN -->
+<div class="overlay" id="overlayDamn">
+  <div class="decrypting-label">DECRYPTING RESULT...</div>
+  <div class="glitch-reveal" id="damnText"></div>
+</div>
+
+<!-- OVERLAY: FOOL -->
+<div class="overlay" id="overlayFool">
+  <div class="fool-wrap">
+    <div class="fool-line1">YOU ARE A FOOL</div>
+    <span class="fool-emoji">🤣</span>
+  </div>
+</div>
+
+<!-- OVERLAY: ERROR SCORE (populated dynamically from AES decryption) -->
+<div class="overlay" id="overlayError">
+  <div style="font-family:'Orbitron',monospace;color:#555;font-size:.7rem;letter-spacing:5px;margin-bottom:20px;animation:blink .6s infinite;">DECRYPTION COMPLETE</div>
+  <div id="dynName" style="font-family:'Orbitron',monospace;color:var(--accent);font-size:1rem;letter-spacing:4px;"></div>
+  <div style="font-family:'Share Tech Mono',monospace;color:#444;font-size:.7rem;letter-spacing:2px;margin:6px 0 18px;">CLASS XII — FINAL SCORE</div>
+  <div id="dynScore" class="error-score"></div>
+  <div id="dynError" class="error-badge"></div>
+  <div id="dynCode" style="color:#333;font-size:.65rem;letter-spacing:2px;margin-top:22px;"></div>
+</div>
+
+<canvas id="confettiCanvas"></canvas>
+
+<script>
+// ═══════════════════════════════════════════
+//  PROTECTION LAYER
+// ═══════════════════════════════════════════
+document.addEventListener('contextmenu', e => e.preventDefault());
+
+document.addEventListener('keydown', e => {
+  if (
+    e.key === 'F12' ||
+    (e.ctrlKey && e.key.toLowerCase() === 'u') ||
+    (e.ctrlKey && e.shiftKey && ['i','j','c','k'].includes(e.key.toLowerCase()))
+  ) { e.preventDefault(); wipe(); }
+});
+
+const _devCheck = setInterval(() => {
+  if (window.outerWidth - window.innerWidth > 160 || window.outerHeight - window.innerHeight > 160) wipe();
+}, 500);
+
+function wipe() {
+  clearInterval(_devCheck);
+  document.body.innerHTML = '';
+  document.body.style.cssText = 'margin:0;background:#06060e;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:monospace;text-align:center;';
+  document.body.innerHTML = '<div style="font-size:4rem">😂</div><div style="color:#ff3355;font-size:1.8rem;margin-top:20px;letter-spacing:4px;">NICE TRY.</div><div style="color:#333;font-size:.7rem;margin-top:12px;letter-spacing:2px;">DEVTOOLS DETECTED.</div>';
+}
+
+// ═══════════════════════════════════════════
+//  PUZZLE DATA
+// ═══════════════════════════════════════════
+// Background: #06060e — last two digits of middle byte = 06 ≠ hint
+// For puzzle 1, shift hidden in page's body border-bottom color set via CSS var trick
+// We hide the shift (3) in a comment-like element only visible on inspect... wait no.
+// We hide shift in the background color itself: background is #06060e
+// Actually shift = 3 is shown via a subtle on-screen element.
+
+const PUZZLES = [
+  {
+    title: 'STAGE 1 — CAESAR CIPHER',
+    label: 'CIPHER DECRYPTION',
+    clue: 'The shift is hiding in plain sight.\nLook at the last two digits of this page\'s background color hex: #06060e\nHint: ignore the "0e" — focus on the repeating digit.\nA+shift=new letter. Decode the message below.',
+    answer: 'stage is set',
+    type: 'text',
+    content: 'Decode this message:\n\n   VWDJH LV VHW\n\n(Caesar cipher, shift = 3)'
+  },
+  {
+    title: 'STAGE 2 — BINARY DECODE',
+    label: 'BINARY SEQUENCE',
+    clue: 'Convert each 8-bit binary group into its ASCII character.\n8 bits = 1 letter.  A=65, B=66... Z=90\nFive groups. Five letters. One word.',
+    answer: 'brain',
+    type: 'text',
+    content: '01000010  01010010  01000001  01001001  01001110\n\n   B=?    R=?    A=?    I=?    N=?'
+  },
+  {
+    title: 'STAGE 3 — MORSE CODE',
+    label: 'SIGNAL DECODE',
+    clue: 'Decode the Morse code below.\n•  = dot (short signal)\n—  = dash (long signal)\nSpaces separate letters.',
+    answer: 'mind',
+    type: 'text',
+    content: '— —     • •     — •     — • •\n\nM  ?     I ?     N ?     D ?'
+  },
+  {
+    title: 'STAGE 4 — T9 KEYPAD',
+    label: 'KEYPAD CIPHER',
+    clue: 'Old phone keyboard cipher.\n2=ABC  3=DEF  4=GHI  5=JKL\n6=MNO  7=PQRS  8=TUV  9=WXYZ\nX-Y = Key X, the Yth letter on that key.',
+    answer: 'open',
+    type: 'text',
+    content: '   6-3   7-1   3-2   6-2\n\n   ?      ?     ?     ?\n\nKeypad:\n[1]   [2 ABC]  [3 DEF]\n[4 GHI] [5 JKL] [6 MNO]\n[7 PQRS][8 TUV] [9 WXYZ]'
+  },
+  {
+    title: 'STAGE 5 — RGB TO ASCII',
+    label: 'COLOR DECODE',
+    clue: 'Three colored boxes are shown below.\nEach box\'s RED value is an ASCII code.\nASCII: 65=A, 66=B, 67=C ... 75=K, 69=E, 89=Y\nConvert all three R values → letters → word.',
+    answer: 'key',
+    type: 'rgb',
+    content: ''
+  },
+  {
+    title: 'STAGE 6 — MATH CHAIN',
+    label: 'EQUATION SEQUENCE',
+    clue: 'Solve in order. Each answer feeds into the next.\nGive only the FINAL numerical answer.',
+    answer: '42',
+    type: 'text',
+    content: 'Step 1:  x² − 9x + 18 = 0\n         Take the LARGER root → call it A\n\nStep 2:  A + B = 13\n         Solve for B\n\nStep 3:  C = A × B\n         What is C?'
+  },
+  {
+    title: 'STAGE 7 — DOUBLE ANAGRAM',
+    label: 'WORD SCRAMBLE',
+    clue: 'Step 1: Unscramble these letters into a word.\n         (Hint: something that starts a fire or an idea)\nStep 2: Unscramble THAT word into a DIFFERENT word.\n         (Hint: where people go for fresh air and play)\nSubmit the SECOND word only.',
+    answer: 'parks',
+    type: 'text',
+    content: 'Scrambled letters:   R  P  A  K  S\n\nFirst word  → _ _ _ _ _  (starts a fire)\nSecond word → _ _ _ _ _  (outdoor spaces)\n\nSubmit: second word'
+  },
+  {
+    title: 'STAGE 8 — SHADOW TEXT',
+    label: 'HIDDEN DATA',
+    clue: 'Sometimes answers hide in plain darkness.\nTry clicking and dragging to SELECT all text in the box.\nLook very carefully at what appears when highlighted.',
+    answer: 'genius',
+    type: 'shadow',
+    content: ''
+  }
+];
+
+// ═══════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════
+let currentPuzzle = 0;
+let lockClicks = 0;
+let allSolved = false;
+
+// ═══════════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════════
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    document.getElementById('loading').style.opacity = '0';
+    setTimeout(() => {
+      document.getElementById('loading').style.display = 'none';
+      const main = document.getElementById('main');
+      main.style.display = 'flex';
+      loadPuzzle(0);
+    }, 600);
+  }, 2900);
+});
+
+// ═══════════════════════════════════════════
+//  PUZZLE ENGINE
+// ═══════════════════════════════════════════
+function loadPuzzle(idx) {
+  const p = PUZZLES[idx];
+  document.getElementById('pzNum').textContent = `STAGE ${idx+1} / 8`;
+  document.getElementById('pzLabel').textContent = p.label;
+  document.getElementById('pzTitle').textContent = p.title;
+  document.getElementById('pzClue').textContent = p.clue;
+  document.getElementById('innerFill').style.width = `${(idx / 8) * 100}%`;
+  document.getElementById('errMsg').style.display = 'none';
+  document.getElementById('pzInput').value = '';
+  document.getElementById('pzContent').classList.remove('correct');
+
+  const content = document.getElementById('pzContent');
+
+  if (p.type === 'rgb') {
+    // K=75, E=69, Y=89
+    content.innerHTML = `
+      <div style="font-size:.72rem;color:#555;margin-bottom:14px;letter-spacing:1px;">Each box's RED value = ASCII code → letter</div>
+      <div class="rgb-row">
+        <div class="rgb-box" style="background:rgb(75,140,60);">
+          <span style="font-weight:bold;color:#fff;font-size:.8rem;">R: 75</span>
+          <span>G: 140</span>
+          <span>B: 60</span>
+        </div>
+        <div class="rgb-box" style="background:rgb(69,80,200);">
+          <span style="font-weight:bold;color:#fff;font-size:.8rem;">R: 69</span>
+          <span>G: 80</span>
+          <span>B: 200</span>
+        </div>
+        <div class="rgb-box" style="background:rgb(89,40,170);">
+          <span style="font-weight:bold;color:#fff;font-size:.8rem;">R: 89</span>
+          <span>G: 40</span>
+          <span>B: 170</span>
+        </div>
+      </div>
+      <div style="font-size:.7rem;color:#444;margin-top:12px;">ASCII ref: 65=A  66=B  67=C ... 75=?  69=?  89=?</div>
+    `;
+    document.body.style.userSelect = 'none';
+  } else if (p.type === 'shadow') {
+    content.innerHTML = `
+      <div style="font-size:.72rem;color:#555;margin-bottom:12px;letter-spacing:1px;">Click and drag to select text inside the box:</div>
+      <div style="text-align:center;padding:16px 0;">
+        <span class="shadow-zone">GENIUS</span>
+      </div>
+      <div style="font-size:.65rem;color:#222;margin-top:12px;text-align:center;">[ nothing to see here ]</div>
+    `;
+    // Allow selection for this puzzle only
+    document.body.style.userSelect = 'text';
+    content.querySelector('.shadow-zone').style.userSelect = 'text';
+  } else {
+    content.textContent = p.content;
+    document.body.style.userSelect = 'none';
+  }
+}
+
+function submitAnswer() {
+  const raw = document.getElementById('pzInput').value.trim().toLowerCase();
+  const correct = PUZZLES[currentPuzzle].answer.toLowerCase();
+
+  if (raw === correct) {
+    // Correct!
+    document.getElementById('pzContent').classList.add('correct');
+    currentPuzzle++;
+    updateGlobalProgress(currentPuzzle);
+
+    if (currentPuzzle >= PUZZLES.length) {
+      setTimeout(showCompletion, 500);
+    } else {
+      setTimeout(() => {
+        document.getElementById('pzContent').classList.remove('correct');
+        loadPuzzle(currentPuzzle);
+      }, 500);
+    }
+  } else {
+    // Wrong
+    const box = document.getElementById('puzzleBox');
+    box.classList.remove('shake');
+    void box.offsetWidth;
+    box.classList.add('shake');
+    document.getElementById('errMsg').style.display = 'block';
+    playError();
+  }
+}
+
+function updateGlobalProgress(n) {
+  document.getElementById('globalFill').style.width = `${(n / 8) * 100}%`;
+  document.getElementById('progLabel').textContent = `${n} / 8 STAGES`;
+  document.getElementById('innerFill').style.width = `${(n / 8) * 100}%`;
+}
+
+function playError() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.type = 'square';
+    o.frequency.setValueAtTime(140, ctx.currentTime);
+    g.gain.setValueAtTime(0.08, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+    o.start(); o.stop(ctx.currentTime + 0.35);
+  } catch(e) {}
+}
+
+// ═══════════════════════════════════════════
+//  COMPLETION
+// ═══════════════════════════════════════════
+function showCompletion() {
+  document.getElementById('puzzleBox').style.display = 'none';
+  document.body.style.userSelect = 'none';
+  const comp = document.getElementById('completion');
+  comp.style.display = 'flex';
+
+  const msg = `"The truth is locked behind the one thing\nyou've been staring at this whole time..."\n\n"Patience unlocks what knowledge cannot."\n\n"And the last word you found...\nis more than just an answer."`;  typewriter(document.getElementById('cryptMsg'), msg, 38);
+
+  // Second clue after 2 min
+  setTimeout(() => {
+    document.getElementById('clue2').style.display = 'block';
+  }, 120000);
+
+  // Activate lock
+  allSolved = true;
+  document.getElementById('lockIcon').classList.add('pulsing');
+  lockClicks = 0;
+}
+
+function typewriter(el, text, speed) {
+  el.textContent = '';
+  let i = 0;
+  const t = setInterval(() => {
+    el.textContent += text[i];
+    i++;
+    if (i >= text.length) clearInterval(t);
+  }, speed);
+}
+
+// ═══════════════════════════════════════════
+//  LOCK CLICK
+// ═══════════════════════════════════════════
+document.getElementById('lockIcon').addEventListener('click', () => {
+  if (!allSolved) return;
+  lockClicks++;
+
+  const lock = document.getElementById('lockIcon');
+  lock.style.transform = 'scale(0.82)';
+  setTimeout(() => { lock.style.transform = ''; }, 130);
+
+  if (lockClicks >= 5) {
+    showHiddenPage();
+  }
+});
+
+function showHiddenPage() {
+  document.getElementById('hiddenPage').style.display = 'flex';
+}
+
+// ═══════════════════════════════════════════
+//  AES-256-GCM ENCRYPTED BLOB
+// ═══════════════════════════════════════════
+const ENCRYPTED = {
+  salt: 'V8uEm+c07MpO0HPDHvMMog==',
+  iv:   '9f9InYEUNbiofOpX',
+  data: '7+Chgf7l4NPUWWvMO8bmuog8QA1yTWZDLgfpzU3aMEoXXj+LxxiAnkK6o6z1uOTzvNSsmOPI5TWHfy5rOpU=',
+  tag:  'Ltp/lt/xlcQw+bKzd4rK7g=='
+};
+
+function b64ToBytes(b64) {
+  return Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+}
+
+async function aesDecrypt(password) {
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']
+  );
+  const key = await crypto.subtle.deriveKey(
+    { name:'PBKDF2', salt:b64ToBytes(ENCRYPTED.salt), iterations:100000, hash:'SHA-256' },
+    keyMaterial,
+    { name:'AES-GCM', length:256 },
+    false, ['decrypt']
+  );
+  const dataBytes = b64ToBytes(ENCRYPTED.data);
+  const tagBytes  = b64ToBytes(ENCRYPTED.tag);
+  const combined  = new Uint8Array(dataBytes.length + tagBytes.length);
+  combined.set(dataBytes); combined.set(tagBytes, dataBytes.length);
+
+  const decrypted = await crypto.subtle.decrypt(
+    { name:'AES-GCM', iv: b64ToBytes(ENCRYPTED.iv) },
+    key, combined
+  );
+  return new TextDecoder().decode(decrypted);
+}
+
+// ═══════════════════════════════════════════
+//  REVEAL
+// ═══════════════════════════════════════════
+document.getElementById('decryptBtn').addEventListener('click', async () => {
+  const key = document.getElementById('cryptoKeyInput').value.trim();
+  const errEl = document.getElementById('decryptErr');
+  const btn = document.getElementById('decryptBtn');
+
+  if (!key) { errEl.style.display = 'block'; return; }
+
+  btn.textContent = 'DECRYPTING...';
+  btn.style.opacity = '0.6';
+  errEl.style.display = 'none';
+
+  try {
+    const result = await aesDecrypt(key);
+    // Correct key — trigger reveal
+    triggerReveal(result);
+  } catch(e) {
+    // Wrong key — decryption throws
+    errEl.style.display = 'block';
+    btn.textContent = '⬛ DECRYPT RESULT ⬛';
+    btn.style.opacity = '1';
+    const box = document.querySelector('.hp-corners');
+    box.classList.remove('shake'); void box.offsetWidth; box.classList.add('shake');
+    playError();
+  }
+});
+
+function triggerReveal(decryptedText) {
+  document.getElementById('hiddenPage').style.display = 'none';
+
+  // Parse decrypted: "DHARANI | 99.9999999... | SYSTEM ERROR | TOO_GENIUS_TO_COMPUTE"
+  const parts = decryptedText.split(' | ');
+
+  // Show DAMN overlay
+  const damn = document.getElementById('overlayDamn');
+  damn.style.display = 'flex';
+  typewriter(document.getElementById('damnText'), 'DAMN,\nYOU FOUND\nTHE ANSWER', 65);
+
+  // After ~3s → FOOL
+  setTimeout(() => {
+    damn.style.display = 'none';
+    const fool = document.getElementById('overlayFool');
+    fool.style.display = 'flex';
+    launchConfetti();
+
+    // After 2.5s → ERROR SCORE (populated from decrypted data)
+    setTimeout(() => {
+      fool.style.display = 'none';
+      const errScreen = document.getElementById('overlayError');
+
+      // Inject decrypted values dynamically
+      document.getElementById('dynName').textContent  = parts[0] || 'DHARANI';
+      document.getElementById('dynScore').textContent = parts[1] || '99.9999999...';
+      document.getElementById('dynError').textContent = '⚠ ' + (parts[2] || 'SYSTEM ERROR');
+      document.getElementById('dynCode').textContent  = 'ERROR CODE: ' + (parts[3] || 'TOO_GENIUS_TO_COMPUTE');
+
+      errScreen.style.display = 'flex';
+    }, 2500);
+  }, 3200);
+}
+
+// ═══════════════════════════════════════════
+//  CONFETTI
+// ═══════════════════════════════════════════
+function launchConfetti() {
+  const canvas = document.getElementById('confettiCanvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  const colors = ['#00ff88','#ff3355','#ffdd00','#00ccff','#ff66cc','#ffffff','#ff8800'];
+  const particles = Array.from({length: 200}, () => ({
+    x: Math.random() * canvas.width,
+    y: -30 - Math.random() * 200,
+    w: Math.random() * 8 + 4,
+    h: Math.random() * 14 + 6,
+    color: colors[Math.floor(Math.random() * colors.length)],
+    speed: Math.random() * 3.5 + 1.5,
+    angle: Math.random() * 360,
+    spin: (Math.random() - 0.5) * 10,
+    drift: (Math.random() - 0.5) * 1.5,
+    opacity: 1
+  }));
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    let alive = false;
+    particles.forEach(p => {
+      p.y += p.speed;
+      p.x += p.drift;
+      p.angle += p.spin;
+      if (p.y > canvas.height - 40) p.opacity -= 0.015;
+      if (p.opacity <= 0) return;
+      if (p.y < canvas.height + 30) alive = true;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, p.opacity);
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.angle * Math.PI / 180);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      ctx.restore();
+    });
+    if (alive) requestAnimationFrame(draw);
+    else ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+  draw();
+}
+
+// ═══════════════════════════════════════════
+//  ENTER KEY
+// ═══════════════════════════════════════════
+document.getElementById('pzInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') submitAnswer();
+});
+document.getElementById('submitBtn').addEventListener('click', submitAnswer);
+document.getElementById('cryptoKeyInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('decryptBtn').click();
+});
+</script>
+</body>
+</html>
